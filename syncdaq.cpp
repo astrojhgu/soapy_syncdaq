@@ -456,12 +456,19 @@ SoapySDR::Device *makeSyncdaqSDR(const SoapySDR::Kwargs &args)
     if(iter!=args.end()){
         shifts=parse_int_list(iter->second);
     }
+
+    size_t port_id=0;
+    iter = args.find("port_id");
+    if(iter!=args.end()){
+        port_id=std::stoul(iter->second);
+    }
+    std::cout<<"port_id="<<port_id<<std::endl;
     
     if (shifts.size()!=2){
         shifts={12,5};
-    }   
+    }
     
-    auto result=new SyncdaqSDR(ctrl_ip, 3001, 0, shifts[0], shifts[1], init_file);
+    auto result=new SyncdaqSDR(ctrl_ip, 3001, port_id, shifts[0], shifts[1], init_file);
     
 
     return result;
