@@ -38,6 +38,7 @@ public:
     uint32_t ip_u32;
     std::unique_ptr<CSdr16Decim, decltype(free_sdr_device) &> device_handler;
     StreamFormat stream_format;
+    std::vector<uint32_t> shifts={12,5};
 
 public:
     // Implement constructor with device specific arguments...
@@ -219,21 +220,22 @@ public:
 
     SoapySDR::ArgInfoList getStreamArgsInfo(const int direction, const size_t channel) const override
     {
+        //assert(0);
         if (direction != SOAPY_SDR_RX)
         {
             throw std::runtime_error("syncdaq is RX only, use SOAPY_SDR_RX");
         }
 
         SoapySDR::ArgInfoList stream_args;
-        ArgInfo s1;
-        s1.key = "s1";
-        s1.value = "12";
-        s1.name = "s1";
-        s1.description = "s1";
-        s1.units = "";
-        s1.type = ArgInfo::INT;
+        // ArgInfo s1;
+        // s1.key = "s1";
+        // s1.value = "12";
+        // s1.name = "s1";
+        // s1.description = "s1";
+        // s1.units = "";
+        // s1.type = ArgInfo::INT;
 
-        stream_args.push_back(s1);
+        // stream_args.push_back(s1);
 
         return stream_args;
     }
@@ -271,6 +273,12 @@ public:
             throw std::runtime_error(std::format("syncdaq only support CF32 and CS16, not {}", format));
         }
 
+        std::cout<<"====================================="<<std::endl;
+        for(auto& x:args){
+            std::cout<<std::format("arg {}: {}", x.first, x.second);
+        }
+        std::cout<<"====================================="<<std::endl;
+
         // auto iter = args.find("f_lo_MHz");
         // if (iter != args.end())
         // {
@@ -281,6 +289,8 @@ public:
         //     // throw std::runtime_error("lo_ch not given");
         // }
 
+        //uint32_t shifts[2]={12,5};
+        setup_data_stream(device_handler.get(),shifts.data(), 1, shifts[1]);
         return (Stream *)this;
     }
 
@@ -291,8 +301,7 @@ public:
         const size_t numElems = 0) override
     {
         // device_handler->start();
-        uint32_t shifts[2]={12,5};
-        setup_data_stream(device_handler.get(),shifts, 1, shifts[1]);
+        
         start_data_stream(device_handler.get());
         std::cout << "ctrl addr=" << format_ipv4(ip_u32) << std::endl;
         return 0;
@@ -545,19 +554,20 @@ SoapySDR::Device *makeSyncdaqSDR(const SoapySDR::Kwargs &args)
     }
     std::cout << "port_id=" << port_id << std::endl;
 
-    // std::vector<int> shifts;
-    // iter = args.find("shifts");
-    // if (iter != args.end())
-    // {
-    //     shifts = parse_int_list(iter->second);
-    // }
+    iter = args.find("shifts");
+    std::vector<uint32_t> shifts;
+    if (iter != args.end())
+    {
+        shifts = parse_int_list(iter->second);
+    }
 
-    // if (shifts.size() != 2)
-    // {
-    //     shifts = {12, 5};
-    // }
+    if (shifts.size() != 2)
+    {
+        shifts = {12, 5};
+    }
 
     auto result = new SyncdaqSDR(ctrl_ip, 3001, port_id, init_file);
+    result->shifts = shifts;
 
     return result;
 }

@@ -71,8 +71,8 @@ std::string format_ipv4(uint32_t ip) {
     return result;
 }
 
-std::vector<int> parse_int_list(const std::string& s) {
-    std::vector<int> result;
+std::vector<uint32_t> parse_int_list(const std::string& s) {
+    std::vector<uint32_t> result;
 
     int current = 0;
     bool in_number = false;
