@@ -55,12 +55,12 @@ SoapySDRUtil --find="driver=syncdaq,ctrl_ip=192.168.5.129"
 |ctrl_ip|控制端口的ip地址|可选参数，如果子网中仅有一个设备则不必设置|
 |init_file|用于初始化设备的的参数文件|可选，用于完成时钟设置、同步等|
 |port_id|`[0,7]`|射频端口编号|
-|shifts|`"a,b"`|不包含引号，分别是两个整数，代表下抽样滤波和抗混叠滤波后所需执行的位移量|
+|shifts|`"s1:s2:s3..."`|注意不包含引号，用冒号隔开的若干整数，最后一个代表抗混叠滤波器的整数位移量，前面的代表各级1/2下抽样的位移量，注意实际采样率等于`100 MSps/(1<<(ns-1))`，其中ns为总的位移量的个数|
 
 一个完整的参数列表例子:
 
 ```bash
-SoapySDRUtil --make="driver=syncdaq,ctrl_ip=192.168.5.129,port_id=1,init_file=init_rfsoc.yaml,shifts=15,8"
+SoapySDRUtil --make="driver=syncdaq,ctrl_ip=192.168.5.129,port_id=1,init_file=init_rfsoc.yaml,shifts=15:8"
 ```
 
 ## 在`gqrx`中使用
