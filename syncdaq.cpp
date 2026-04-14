@@ -21,6 +21,12 @@ constexpr double SAMP_RATE = 50e6;
 using namespace std;
 using namespace SoapySDR;
 
+enum StreamFormat
+{
+    FORMAT_CF32,
+    FORMAT_CS16
+};
+
 /***********************************************************************
  * Device interface
  **********************************************************************/
@@ -31,23 +37,27 @@ public:
     float voltage_gain;
     uint32_t ip_u32;
     std::unique_ptr<CSdr16Decim, decltype(free_sdr_device) &> device_handler;
+    StreamFormat stream_format;
 
 public:
     // Implement constructor with device specific arguments...
     SyncdaqSDR() = delete;
-    SyncdaqSDR(const std::string ip_str, const int local_port, int port_id, uint32_t dec_shift, uint32_t fir_shift, const char* init_file)
+    SyncdaqSDR(const std::string ip_str, const int local_port, int port_id, const char *init_file)
         : SoapySDR::Device(), device_handler(
                                   nullptr, free_sdr_device),
           f_lo_MHz(160.0), voltage_gain(1.0),
-          ip_u32(parse_ipv4(ip_str.c_str()))
+          ip_u32(parse_ipv4(ip_str.c_str())),
+          stream_format(FORMAT_CF32)
     {
-        auto dev_ptr=make_sdr16_decim_u32(parse_ipv4(ip_str.c_str()), 3001, port_id, &dec_shift, 1, fir_shift, init_file);
-        if(dev_ptr==nullptr){
+        auto dev_ptr = make_sdr16_decim_u32(parse_ipv4(ip_str.c_str()), 3001, port_id, init_file);
+        if (dev_ptr == nullptr)
+        {
             throw std::runtime_error("no dev found");
         }
         device_handler.reset(dev_ptr);
-        if(device_handler.get()==nullptr){
-            std::cerr<<"null dev"<<std::endl;
+        if (device_handler.get() == nullptr)
+        {
+            std::cerr << "null dev" << std::endl;
         }
     }
 
@@ -62,12 +72,12 @@ public:
         return "syncdaq";
     }
 
-    std::string getHardwareKey(void) const
+    std::string getHardwareKey(void) const override
     {
         return format_ipv4(ip_u32);
     }
 
-    Kwargs getHardwareInfo(void) const
+    Kwargs getHardwareInfo(void) const override
     {
         Kwargs result;
         result["vendor"] = "UVWStudio";
@@ -75,16 +85,16 @@ public:
         return result;
     }
 
-    void setFrontendMapping(const int direction, const std::string &mapping)
+    void setFrontendMapping(const int direction, const std::string &mapping) override
     {
     }
 
-    size_t getNumChannels(const int direction) const
+    size_t getNumChannels(const int direction) const override
     {
         return direction == SOAPY_SDR_RX ? 1 : 0;
     }
 
-    Kwargs getChannelInfo(const int direction, const size_t channel) const
+    Kwargs getChannelInfo(const int direction, const size_t channel) const override
     {
         Kwargs result;
         result["Num"] = "1";
@@ -93,51 +103,75 @@ public:
         return result;
     }
 
-    bool getFullDuplex(const int direction, const size_t channel) const
+    bool getFullDuplex(const int direction, const size_t channel) const override
     {
         return false;
     }
 
-    std::vector<std::string> getStreamFormats(const int direction, const size_t channel) const
+    std::vector<std::string> getStreamFormats(const int direction, const size_t channel) const override
     {
         std::vector<std::string> result;
         if (direction == SOAPY_SDR_RX && channel < getNumChannels(direction))
         {
+            result.push_back(SOAPY_SDR_CS16);
             result.push_back(SOAPY_SDR_CF32);
         }
         return result;
     }
 
-    std::string getNativeStreamFormat(const int direction, const size_t channel, double &fullScale) const
+    std::string getNativeStreamFormat(const int direction, const size_t channel, double &fullScale) const override
     {
         fullScale = 32767;
         return SOAPY_SDR_CS16;
     }
 
-    SoapySDR::RangeList getFrequencyRange(const int direction, const size_t channel) const
+    SoapySDR::RangeList getFrequencyRange(const int direction, const size_t channel) const override
     {
-        SoapySDR::Range r(30e6, 1920e6, 100e3);
+        std::cout << "getFrequencyRange called" << std::endl;
+        SoapySDR::Range r(30e6, 1920e6, 10e3);
         return SoapySDR::RangeList{r};
     }
 
-    SoapySDR::RangeList getBandwidthRange(const int direction, const size_t channel) const
+    SoapySDR::RangeList getFrequencyRange(const int direction, const size_t channel, const std::string &name) const override
+    {
+        std::cout << "getFrequencyRange called" << std::endl;
+        SoapySDR::Range r(30e6, 1920e6, 10e3);
+        return SoapySDR::RangeList{r};
+    }
+
+    ArgInfoList getFrequencyArgsInfo(const int direction, const size_t channel) const override
+    {
+        ArgInfoList result;
+        ArgInfo ai;
+        ai.key = "lo_freq";
+        ai.type = ArgInfo::FLOAT;
+        ai.value = "160e6";
+        ai.units = "Hz";
+        ai.name = "lo_freq";
+        ai.range = Range(30.0e6, 1920.0e6, 10.0e3);
+
+        result.push_back(ai);
+        return result;
+    }
+
+    SoapySDR::RangeList getBandwidthRange(const int direction, const size_t channel) const override
     {
         SoapySDR::Range r(SAMP_RATE, SAMP_RATE, 0);
         return SoapySDR::RangeList{r};
     }
 
-    void setBandwidth(const int direction, const size_t channel, const double bw)
+    void setBandwidth(const int direction, const size_t channel, const double bw) override
     {
     }
 
-    double getBandwidth(const int direction, const size_t channel) const
+    double getBandwidth(const int direction, const size_t channel) const override
     {
         return SAMP_RATE;
     }
 
     // Implement all applicable virtual methods from SoapySDR::Device
 
-    void setFrequency(const int direction, const size_t channel, const double frequency, const Kwargs &args = Kwargs())
+    void setFrequency(const int direction, const size_t channel, const double frequency, const Kwargs &args = Kwargs()) override
     {
         std::cout << "=================================" << std::endl;
         std::cout << "new freq:" << frequency << std::endl;
@@ -146,23 +180,44 @@ public:
         std::cout << "=================================" << std::endl;
     }
 
-    double getFrequency(const int direction, const size_t channel) const
+    virtual void setFrequency(const int direction, const size_t channel, const std::string &name, const double frequency, const Kwargs &args = Kwargs()) override
     {
+        std::cout << "=================================" << std::endl;
+        std::cout << "new freq:" << frequency << std::endl;
+        f_lo_MHz = frequency / 1e6;
+        set_mixer_freq(device_handler.get(), f_lo_MHz, 0);
+        std::cout << "=================================" << std::endl;
+    }
+
+    double getFrequency(const int direction, const size_t channel) const override
+    {
+        std::cout << "getFrequency called" << std::endl;
         return f_lo_MHz * 1e6;
     }
 
-    SoapySDR::RangeList getSampleRateRange(const int direction, const size_t channel) const
+    double getFrequency(const int direction, const size_t channel, const std::string &name) const override
+    {
+        std::cout << "getFrequency called" << std::endl;
+        return f_lo_MHz * 1e6;
+    }
+
+    std::vector<std::string> listFrequencies(const int direction, const size_t channel) const override
+    {
+        return std::vector<std::string>{"rx lo"};
+    }
+
+    SoapySDR::RangeList getSampleRateRange(const int direction, const size_t channel) const override
     {
         SoapySDR::Range r(SAMP_RATE, SAMP_RATE, 0);
         return SoapySDR::RangeList{r};
     }
 
-    double getSampleRate(const int direction, const size_t channel) const
+    double getSampleRate(const int direction, const size_t channel) const override
     {
         return SAMP_RATE;
     }
 
-    SoapySDR::ArgInfoList getStreamArgsInfo(const int direction, const size_t channel)
+    SoapySDR::ArgInfoList getStreamArgsInfo(const int direction, const size_t channel) const override
     {
         if (direction != SOAPY_SDR_RX)
         {
@@ -170,15 +225,15 @@ public:
         }
 
         SoapySDR::ArgInfoList stream_args;
-        ArgInfo f_lo_MHz_arg;
-        f_lo_MHz_arg.key = "f_lo_MHz";
-        f_lo_MHz_arg.value = "160";
-        f_lo_MHz_arg.name = "f_lo_MHz";
-        f_lo_MHz_arg.description = "lo frequency";
-        f_lo_MHz_arg.units = "MHz";
-        f_lo_MHz_arg.type = ArgInfo::FLOAT;
+        ArgInfo s1;
+        s1.key = "s1";
+        s1.value = "12";
+        s1.name = "s1";
+        s1.description = "s1";
+        s1.units = "";
+        s1.type = ArgInfo::INT;
 
-        stream_args.push_back(f_lo_MHz_arg);
+        stream_args.push_back(s1);
 
         return stream_args;
     }
@@ -187,7 +242,7 @@ public:
         const int direction,
         const std::string &format,
         const std::vector<size_t> &channels = std::vector<size_t>(),
-        const Kwargs &args = Kwargs())
+        const Kwargs &args = Kwargs()) override
     {
         std::cout << "==========================" << std::endl;
         for (auto &i : args)
@@ -200,21 +255,31 @@ public:
             throw std::runtime_error("syncdaq is RX only, use SOAPY_SDR_RX");
         }
 
-        if (format != SOAPY_SDR_CF32)
+        if (format == SOAPY_SDR_CF32)
         {
-
-            throw std::runtime_error(std::format("syncdaq only support CF32, not {}", format));
+            // throw std::runtime_error(std::format("syncdaq only support CF32, not {}", format));
+            std::cout << "stream format: CF32" << std::endl;
+            stream_format = FORMAT_CF32;
+        }
+        else if (format == SOAPY_SDR_CS16)
+        {
+            std::cout << "stream format: CS16" << std::endl;
+            stream_format = FORMAT_CS16;
+        }
+        else
+        {
+            throw std::runtime_error(std::format("syncdaq only support CF32 and CS16, not {}", format));
         }
 
-        auto iter = args.find("f_lo_MHz");
-        if (iter != args.end())
-        {
-            // std::cout << "lo ch not given, use default value 1024" << std::endl;
-            // device_handler->set_lo_ch(atoi(iter->second.c_str()));
-            set_mixer_freq(device_handler.get(), atof(iter->second.c_str()), 0);
+        // auto iter = args.find("f_lo_MHz");
+        // if (iter != args.end())
+        // {
+        //     // std::cout << "lo ch not given, use default value 1024" << std::endl;
+        //     // device_handler->set_lo_ch(atoi(iter->second.c_str()));
+        //     set_mixer_freq(device_handler.get(), atof(iter->second.c_str()), 0);
 
-            // throw std::runtime_error("lo_ch not given");
-        }
+        //     // throw std::runtime_error("lo_ch not given");
+        // }
 
         return (Stream *)this;
     }
@@ -223,15 +288,17 @@ public:
         Stream *stream,
         const int flags = 0,
         const long long timeNs = 0,
-        const size_t numElems = 0)
+        const size_t numElems = 0) override
     {
         // device_handler->start();
+        uint32_t shifts[2]={12,5};
+        setup_data_stream(device_handler.get(),shifts, 1, shifts[1]);
         start_data_stream(device_handler.get());
         std::cout << "ctrl addr=" << format_ipv4(ip_u32) << std::endl;
         return 0;
     }
 
-    void closeStream(Stream *stream)
+    void closeStream(Stream *stream) override
     {
         deactivateStream(stream, 0, 0);
     }
@@ -239,14 +306,14 @@ public:
     int deactivateStream(
         Stream *stream,
         const int flags = 0,
-        const long long timeNs = 0)
+        const long long timeNs = 0) override
     {
         std::cerr << "Stream stopped" << std::endl;
         stop_data_stream(device_handler.get());
         return 0;
     }
 
-    size_t getStreamMTU(Stream *stream) const
+    size_t getStreamMTU(Stream *stream) const override
     {
         return get_mtu();
     }
@@ -257,20 +324,38 @@ public:
         const size_t numElems,
         int &flags,
         long long &timeNs,
-        const long timeoutUs)
+        const long timeoutUs) override
     {
-        fetch_data_cf32(device_handler.get(), (CComplexF32 *)buffs[0], numElems);
-        auto buff = (CComplexF32 *)buffs[0];
-
-        for (int i = 0; i < numElems; ++i)
+        if (stream_format == FORMAT_CF32)
         {
-            buff[i].re *= voltage_gain;
-            buff[i].im *= voltage_gain;
+            fetch_data_cf32(device_handler.get(), (CComplexF32 *)buffs[0], numElems);
+            auto buff = (CComplexF32 *)buffs[0];
+            for (int i = 0; i < numElems; ++i)
+            {
+                buff[i].re *= voltage_gain;
+                buff[i].im *= voltage_gain;
+            }
+        }
+        else if (stream_format == FORMAT_CS16)
+        {
+            //
+            fetch_data_16(device_handler.get(), (CComplex *)buffs[0], numElems);
+            auto buff = (CComplex *)buffs[0];
+
+            for (int i = 0; i < numElems; ++i)
+            {
+                buff[i].re *= voltage_gain;
+                buff[i].im *= voltage_gain;
+            }
+        }
+        else
+        {
+            assert(0);
         }
         return numElems;
     }
 
-    std::vector<std::string> listAntennas(const int direction, const size_t channel) const
+    std::vector<std::string> listAntennas(const int direction, const size_t channel) const override
     {
         if (direction == SOAPY_SDR_RX)
         {
@@ -282,56 +367,56 @@ public:
         }
     }
 
-    void setAntenna(const int direction, const size_t channel, const std::string &name)
+    void setAntenna(const int direction, const size_t channel, const std::string &name) override
     {
     }
 
-    std::string getAntenna(const int direction, const size_t channel) const
+    std::string getAntenna(const int direction, const size_t channel) const override
     {
         return std::string("EXT");
     }
 
-    bool hasDCOffsetMode(const int direction, const size_t channel) const
+    bool hasDCOffsetMode(const int direction, const size_t channel) const override
     {
         return false;
     }
 
-    std::vector<std::string> listGains(const int direction, const size_t channel) const
+    std::vector<std::string> listGains(const int direction, const size_t channel) const override
     {
         return std::vector<std::string>{"GAIN"};
     }
 
-    double getGain(const int direction, const size_t channel) const
+    double getGain(const int direction, const size_t channel) const override
     {
         return std::log10(voltage_gain) * 20;
     }
 
-    double getGain(const int direction, const size_t channel, const std::string &name) const
+    double getGain(const int direction, const size_t channel, const std::string &name) const override
     {
         return std::log10(voltage_gain) * 20;
     }
 
-    SoapySDR::Range getGainRange(const int direction, const size_t channel) const
+    SoapySDR::Range getGainRange(const int direction, const size_t channel) const override
     {
         SoapySDR::Range r(-100.0, 0.0, 0.0);
         return r;
     }
 
-    SoapySDR::Range getGainRange(const int direction, const size_t channel, const std::string &name) const
+    SoapySDR::Range getGainRange(const int direction, const size_t channel, const std::string &name) const override
     {
         SoapySDR::Range r(-100.0, 0.0, 0.0);
         return r;
     }
 
-    bool hasGainMode(const int direction, const size_t channel) const
+    bool hasGainMode(const int direction, const size_t channel) const override
     {
         return false;
     }
 
-    void setGain(const int direction, const size_t channel, const std::string &name, const double value)
+    void setGain(const int direction, const size_t channel, const std::string &name, const double value) override
     {
         voltage_gain = std::pow(10.0, value / 20);
-        std::cerr << "input= "<<value<<" gain=" << voltage_gain << std::endl;
+        std::cerr << "input= " << value << " gain=" << voltage_gain << std::endl;
     }
 };
 
@@ -445,31 +530,34 @@ SoapySDR::Device *makeSyncdaqSDR(const SoapySDR::Kwargs &args)
         ctrl_ip = format_ipv4(ctrl_ips[0]).c_str();
     }
 
-    const char* init_file=nullptr;
-    iter=args.find("init_file");
-    if(iter!=args.end()){
-        init_file=iter->second.c_str();
+    const char *init_file = nullptr;
+    iter = args.find("init_file");
+    if (iter != args.end())
+    {
+        init_file = iter->second.c_str();
     }
 
-    std::vector<int> shifts;
-    iter=args.find("shifts");
-    if(iter!=args.end()){
-        shifts=parse_int_list(iter->second);
-    }
-
-    size_t port_id=0;
+    size_t port_id = 0;
     iter = args.find("port_id");
-    if(iter!=args.end()){
-        port_id=std::stoul(iter->second);
+    if (iter != args.end())
+    {
+        port_id = std::stoul(iter->second);
     }
-    std::cout<<"port_id="<<port_id<<std::endl;
-    
-    if (shifts.size()!=2){
-        shifts={12,5};
-    }
-    
-    auto result=new SyncdaqSDR(ctrl_ip, 3001, port_id, shifts[0], shifts[1], init_file);
-    
+    std::cout << "port_id=" << port_id << std::endl;
+
+    // std::vector<int> shifts;
+    // iter = args.find("shifts");
+    // if (iter != args.end())
+    // {
+    //     shifts = parse_int_list(iter->second);
+    // }
+
+    // if (shifts.size() != 2)
+    // {
+    //     shifts = {12, 5};
+    // }
+
+    auto result = new SyncdaqSDR(ctrl_ip, 3001, port_id, init_file);
 
     return result;
 }
