@@ -1,6 +1,6 @@
 all: libsoapy_syncdaq.so
 
-LIBS=-L ./lib -lSoapySDR -lyaml-cpp -L ../syncdaq/target/release -lsyncdaq
+LIBS=-L ./lib -lSoapySDR -L ../syncdaq/target/release -lsyncdaq
 CFLAGS=-g -I ../syncdaq/include -I ../sdaa_ctrl/include
 
 #ddc_kernel.o: ddc_kernel.cu
