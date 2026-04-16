@@ -13,10 +13,11 @@ parser.add_argument("--ctrl-ip", type=str, required=True)
 parser.add_argument("--freq", type=float, required=True)
 parser.add_argument("--shifts", default="10:9:14")
 parser.add_argument("--firshift", default="15")
-parser.add_argument("--port_id", default="0")
+parser.add_argument("--port-id", default="0")
 parser.add_argument("--outfile", default="sdr_data.bin")
 parser.add_argument("--buffer-size", type=int, default=8192)
 parser.add_argument("--nbuf-to-rec", type=int, default=100)
+parser.add_argument("--gain", type=float, default=100)
 args = parser.parse_args()
 
 shifts = args.shifts
@@ -27,6 +28,7 @@ nbuf_to_rec = args.nbuf_to_rec
 port_id = args.port_id
 ctrl_ip = args.ctrl_ip
 freq = args.freq
+gain = args.gain
 #
 #
 # enumerate devices
@@ -46,6 +48,7 @@ for freqRange in freqs:
 # sdr.setSampleRate(SOAPY_SDR_RX, 0, 50e6)
 print(sdr.getSampleRate(SOAPY_SDR_RX, 0))
 sdr.setFrequency(SOAPY_SDR_RX, 0, freq)
+sdr.setGain(SOAPY_SDR_RX, 0, gain)
 
 # sys.exit()
 buff = numpy.array([0] * buffer_size, numpy.complex64)

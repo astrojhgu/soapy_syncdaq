@@ -12,6 +12,7 @@
 #include <cassert>
 #include <mutex>
 #include <syncdaq.h>
+#include <cstring>
 // #include <sdaa_ctrl.h>
 
 using namespace syncdaq;
@@ -38,13 +39,13 @@ public:
     uint32_t ip_u32;
     std::unique_ptr<CSdr16Decim, decltype(free_sdr_device) &> device_handler;
     StreamFormat stream_format;
-    std::vector<uint32_t> shifts={12};
+    std::vector<uint32_t> shifts = {12};
     int32_t firshift = -1;
 
 public:
     // Implement constructor with device specific arguments...
     SyncdaqSDR() = delete;
-    SyncdaqSDR(const std::string ip_str, const int local_port, int port_id, const std::vector<uint32_t>& shifts1,int32_t firshift1, const char *init_file)
+    SyncdaqSDR(const std::string ip_str, const int local_port, int port_id, const std::vector<uint32_t> &shifts1, int32_t firshift1, const char *init_file)
         : SoapySDR::Device(), device_handler(
                                   nullptr, free_sdr_device),
           f_lo_MHz(160.0), voltage_gain(1.0),
@@ -85,7 +86,7 @@ public:
     {
         Kwargs result;
         result["vendor"] = "UVWStudio";
-        result["smp rate"] = format("{} Sps", RAW_SAMP_RATE/(1<<shifts.size()));
+        result["smp rate"] = format("{} Sps", RAW_SAMP_RATE / (1 << shifts.size()));
         return result;
     }
 
@@ -160,7 +161,7 @@ public:
 
     SoapySDR::RangeList getBandwidthRange(const int direction, const size_t channel) const override
     {
-        SoapySDR::Range r(RAW_SAMP_RATE/(1<<shifts.size()), RAW_SAMP_RATE/(1<<shifts.size()), 0);
+        SoapySDR::Range r(RAW_SAMP_RATE / (1 << shifts.size()), RAW_SAMP_RATE / (1 << shifts.size()), 0);
         return SoapySDR::RangeList{r};
     }
 
@@ -170,7 +171,7 @@ public:
 
     double getBandwidth(const int direction, const size_t channel) const override
     {
-        return RAW_SAMP_RATE/(1<<shifts.size());
+        return RAW_SAMP_RATE / (1 << shifts.size());
     }
 
     // Implement all applicable virtual methods from SoapySDR::Device
@@ -212,18 +213,18 @@ public:
 
     SoapySDR::RangeList getSampleRateRange(const int direction, const size_t channel) const override
     {
-        SoapySDR::Range r(RAW_SAMP_RATE/(1<<shifts.size()), RAW_SAMP_RATE/(1<<shifts.size()), 0);
+        SoapySDR::Range r(RAW_SAMP_RATE / (1 << shifts.size()), RAW_SAMP_RATE / (1 << shifts.size()), 0);
         return SoapySDR::RangeList{r};
     }
 
     double getSampleRate(const int direction, const size_t channel) const override
     {
-        return RAW_SAMP_RATE/(1<<shifts.size());
+        return RAW_SAMP_RATE / (1 << shifts.size());
     }
 
     SoapySDR::ArgInfoList getStreamArgsInfo(const int direction, const size_t channel) const override
     {
-        //assert(0);
+        // assert(0);
         if (direction != SOAPY_SDR_RX)
         {
             throw std::runtime_error("syncdaq is RX only, use SOAPY_SDR_RX");
@@ -276,11 +277,12 @@ public:
             throw std::runtime_error(std::format("syncdaq only support CF32 and CS16, not {}", format));
         }
 
-        std::cout<<"====================================="<<std::endl;
-        for(auto& x:args){
-            std::cout<<std::format("arg {}: {}", x.first, x.second);
+        std::cout << "=====================================" << std::endl;
+        for (auto &x : args)
+        {
+            std::cout << std::format("arg {}: {}", x.first, x.second);
         }
-        std::cout<<"====================================="<<std::endl;
+        std::cout << "=====================================" << std::endl;
 
         // auto iter = args.find("f_lo_MHz");
         // if (iter != args.end())
@@ -292,8 +294,8 @@ public:
         //     // throw std::runtime_error("lo_ch not given");
         // }
 
-        //uint32_t shifts[2]={12,5};
-        setup_data_stream(device_handler.get(),shifts.data(), shifts.size(), firshift);
+        // uint32_t shifts[2]={12,5};
+        setup_data_stream(device_handler.get(), shifts.data(), shifts.size(), firshift);
         return (Stream *)this;
     }
 
@@ -304,7 +306,7 @@ public:
         const size_t numElems = 0) override
     {
         // device_handler->start();
-        
+
         start_data_stream(device_handler.get());
         std::cout << "ctrl addr=" << format_ipv4(ip_u32) << std::endl;
         return 0;
@@ -569,19 +571,27 @@ SoapySDR::Device *makeSyncdaqSDR(const SoapySDR::Kwargs &args)
         shifts = {12};
     }
 
-    for(size_t i=0;i<shifts.size();++i){
-        std::cout<<"shift "<<i<<"="<<shifts[i]<<std::endl;
+    for (size_t i = 0; i < shifts.size(); ++i)
+    {
+        std::cout << "shift " << i << "=" << shifts[i] << std::endl;
     }
 
     iter = args.find("firshift");
     int32_t firshift = -1;
     if (iter != args.end())
     {
-        firshift = std::stol(iter->second);
+        if (strcmp(iter->second.c_str(), "") == 0)
+        {
+            firshift = -1;
+        }
+        else
+        {
+            firshift = std::stol(iter->second);
+        }
     }
 
-    auto result = new SyncdaqSDR(ctrl_ip, 3001, port_id, shifts,firshift, init_file);
-    //result->shifts = shifts;
+    auto result = new SyncdaqSDR(ctrl_ip, 3001, port_id, shifts, firshift, init_file);
+    // result->shifts = shifts;
 
     return result;
 }
