@@ -60,6 +60,6 @@ with open(outfile, "wb") as f:
         if sr.ret > 0:
             # 3. 将 numpy 数组转换为原始字节流并写入文件
             f.write(buff[: sr.ret].tobytes())
+sdr.deactivateStream(rxStream)
 
 print(sdr.getSampleRate(SOAPY_SDR_RX, 0))
-sdr.deactivateStream(rxStream)
