@@ -11,8 +11,8 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument("--ctrl-ip", type=str, required=True)
 parser.add_argument("--freq", type=float, required=True)
-parser.add_argument("--shifts", default="10:9:14")
-parser.add_argument("--firshift", default="15")
+parser.add_argument("--shifts", default="")
+parser.add_argument("--firshift", default="-1")
 parser.add_argument("--port-id", default="0")
 parser.add_argument("--outfile", default="sdr_data.bin")
 parser.add_argument("--buffer-size", type=int, default=8192)
@@ -65,4 +65,6 @@ with open(outfile, "wb") as f:
             f.write(buff[: sr.ret].tobytes())
 sdr.deactivateStream(rxStream)
 
+print("===============================")
 print(sdr.getSampleRate(SOAPY_SDR_RX, 0))
+print("===============================")
