@@ -1,7 +1,7 @@
 all: libsoapy_syncdaq.so
 
 LIBS=-L ./lib -lSoapySDR -L ../syncdaq/target/release -lsyncdaq
-CFLAGS=-g -I ../syncdaq/include -I ../sdaa_ctrl/include
+CFLAGS=-g -I ../syncdaq/include
 
 #ddc_kernel.o: ddc_kernel.cu
 #	nvcc -c $< -o $@ $(OPT) --cudart=static --cudadevrt=none $(CFLAGS)
