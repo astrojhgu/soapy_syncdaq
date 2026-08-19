@@ -17,7 +17,8 @@
 // #include <sdaa_ctrl.h>
 
 using namespace syncdaq;
-constexpr double RAW_SAMP_RATE = 100e6;
+// T510 每个射频端口满速 320 MSps（实测 156250 pkt/s × 2048 complex/sample）
+constexpr double RAW_SAMP_RATE = 320e6;
 
 // constexpr int16_t local_port = 3002;
 using namespace std;
