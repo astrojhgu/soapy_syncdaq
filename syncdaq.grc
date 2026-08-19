@@ -393,7 +393,7 @@ blocks:
     dc_removal0: 'False'
     dc_removal1: 'True'
     dev_args: ''
-    driver: syncdaq,shifts=10:9:14,firshift=15
+    driver: syncdaq,shifts=12:15:14,firshift=15
     freq_correction0: '0'
     freq_correction1: '0'
     gain0: gain

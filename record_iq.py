@@ -35,7 +35,7 @@ gain = args.gain
 results = SoapySDR.Device.enumerate()
 for result in results:
     print(result)
-sdr_args = dict(driver="syncdaq", ctrl_ip=ctrl_ip, shifts=shifts, firshift=firshift)
+sdr_args = dict(driver="syncdaq", ctrl_ip=ctrl_ip, shifts=shifts, firshift=firshift, port_id=port_id)
 sdr = SoapySDR.Device(sdr_args)
 print("------------------------------")
 print(sdr)
