@@ -48,7 +48,7 @@ public:
       : SoapySDR::Device(), device_handler(nullptr, free_sdr_device),
         f_lo_MHz(160.0), voltage_gain(1.0), ip_u32(parse_ipv4(ip_str.c_str())),
         stream_format(FORMAT_CF32), shifts(shifts1), firshift(firshift1) {
-    auto dev_ptr = make_sdr16_decim_u32(parse_ipv4(ip_str.c_str()), 3001,
+    auto dev_ptr = make_sdr16_decim_u32(parse_ipv4(ip_str.c_str()), local_port,
                                         port_id, init_file);
     if (dev_ptr == nullptr) {
       throw std::runtime_error("no dev found");
@@ -520,8 +520,15 @@ SoapySDR::Device *makeSyncdaqSDR(const SoapySDR::Kwargs &args) {
     }
   }
 
+  iter = args.find("local_ctrl_port");
+  int local_port = 3001;
+  if (iter != args.end()) {
+    local_port = std::stoi(iter->second);
+  }
+  std::cout << "local_ctrl_port=" << local_port << std::endl;
+
   auto result =
-      new SyncdaqSDR(ctrl_ip, 3001, port_id, shifts, firshift, init_file);
+      new SyncdaqSDR(ctrl_ip, local_port, port_id, shifts, firshift, init_file);
   // result->shifts = shifts;
 
   return result;
