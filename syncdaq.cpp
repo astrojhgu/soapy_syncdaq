@@ -17,9 +17,7 @@
 // #include <sdaa_ctrl.h>
 
 using namespace syncdaq;
-// T510 每个射频端口满速 320 MSps（实测 156250 pkt/s × 2048 complex/sample）
-constexpr double RAW_SAMP_RATE = 320e6;
-
+// T510 实际采样率通过 Query 动态探测（320 或 100 MSps 固件）
 // constexpr int16_t local_port = 3002;
 using namespace std;
 using namespace SoapySDR;
@@ -38,6 +36,7 @@ public:
   StreamFormat stream_format;
   std::vector<uint32_t> shifts = {12};
   int32_t firshift = -1;
+  double raw_samp_rate_Hz = 0.0;
 
 public:
   // Implement constructor with device specific arguments...
@@ -57,6 +56,12 @@ public:
     if (device_handler.get() == nullptr) {
       std::cerr << "null dev" << std::endl;
     }
+    uint32_t smp_rate_msps = get_device_smp_rate(ip_u32, local_port);
+    if (smp_rate_msps == 0) {
+      throw std::runtime_error("failed to query device sample rate");
+    }
+    raw_samp_rate_Hz = smp_rate_msps * 1e6;
+    std::cout << "device sample rate: " << smp_rate_msps << " MSps" << std::endl;
   }
 
   ~SyncdaqSDR() { stop_data_stream(device_handler.get()); }
@@ -71,7 +76,7 @@ public:
   Kwargs getHardwareInfo(void) const override {
     Kwargs result;
     result["vendor"] = "UVWStudio";
-    result["smp rate"] = format("{} Sps", RAW_SAMP_RATE / (1 << shifts.size()));
+    result["smp rate"] = format("{} Sps", raw_samp_rate_Hz / (1 << shifts.size()));
     return result;
   }
 
@@ -143,8 +148,8 @@ public:
 
   SoapySDR::RangeList getBandwidthRange(const int direction,
                                         const size_t channel) const override {
-    SoapySDR::Range r(RAW_SAMP_RATE / (1 << shifts.size()),
-                      RAW_SAMP_RATE / (1 << shifts.size()), 0);
+    SoapySDR::Range r(raw_samp_rate_Hz / (1 << shifts.size()),
+                      raw_samp_rate_Hz / (1 << shifts.size()), 0);
     return SoapySDR::RangeList{r};
   }
 
@@ -153,7 +158,7 @@ public:
 
   double getBandwidth(const int direction,
                       const size_t channel) const override {
-    return RAW_SAMP_RATE / (1 << shifts.size());
+    return raw_samp_rate_Hz / (1 << shifts.size());
   }
 
   // Implement all applicable virtual methods from SoapySDR::Device
@@ -197,19 +202,19 @@ public:
 
   SoapySDR::RangeList getSampleRateRange(const int direction,
                                          const size_t channel) const override {
-    SoapySDR::Range r(RAW_SAMP_RATE / (1 << shifts.size()),
-                      RAW_SAMP_RATE / (1 << shifts.size()), 0);
+    SoapySDR::Range r(raw_samp_rate_Hz / (1 << shifts.size()),
+                      raw_samp_rate_Hz / (1 << shifts.size()), 0);
     return SoapySDR::RangeList{r};
   }
 
   double getSampleRate(const int direction,
                        const size_t channel) const override {
-    return RAW_SAMP_RATE / (1 << shifts.size());
+    return raw_samp_rate_Hz / (1 << shifts.size());
   }
 
   std::vector<double> listSampleRates(const int direction,
                                       const size_t channel) const override {
-    return {RAW_SAMP_RATE / (1 << shifts.size())};
+    return {raw_samp_rate_Hz / (1 << shifts.size())};
   }
 
   SoapySDR::ArgInfoList getStreamArgsInfo(const int direction,
