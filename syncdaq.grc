@@ -139,7 +139,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: 40e6
+    value: 160e6
   states:
     bus_sink: false
     bus_source: false
@@ -393,7 +393,7 @@ blocks:
     dc_removal0: 'False'
     dc_removal1: 'True'
     dev_args: ''
-    driver: syncdaq,shifts=12:15:14,firshift=15
+    driver: syncdaq,port_id=0,shifts=12,firshift=15
     freq_correction0: '0'
     freq_correction1: '0'
     gain0: gain
@@ -429,4 +429,4 @@ connections:
 
 metadata:
   file_format: 1
-  grc_version: 3.10.9.2
+  grc_version: 3.10.12.0
